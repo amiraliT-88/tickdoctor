@@ -1,0 +1,27 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+tickdoctor
+
+# Test artifacts
+*.test
+*.out
+coverage.txt
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local scratch and logs
+*.log
