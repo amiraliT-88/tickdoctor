@@ -1,0 +1,5 @@
+CommandLine flags: -XX:InitialHeapSize=2147483648 -XX:MaxHeapSize=4294967296 -XX:+PrintGC -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseParallelGC
+2026-11-15T18:04:10.123+0300: 10.456: [GC (Allocation Failure) [PSYoungGen: 524288K->65536K(614400K)] 524288K->65600K(2097152K), 0.0152340 secs] [Times: user=0.06 sys=0.00, real=0.02 secs]
+2026-11-15T18:04:25.000+0300: 25.100: [GC (Allocation Failure) [PSYoungGen: 589824K->65536K(614400K)] 589888K->131100K(2097152K), 0.0184500 secs] [Times: user=0.07 sys=0.00, real=0.02 secs]
+2026-11-15T18:04:45.000+0300: 45.200: [GC (Allocation Failure) [PSYoungGen: 589824K->65536K(614400K)] 655388K->196600K(2097152K), 0.0221000 secs] [Times: user=0.08 sys=0.00, real=0.02 secs]
+2026-11-15T18:05:00.000+0300: 60.123: [Full GC (System.gc()) [PSYoungGen: 65536K->0K(614400K)] [ParOldGen: 500000K->350000K(1482752K)] 565536K->350000K(2097152K), [Metaspace: 35000K->35000K(1081344K)], 0.9523100 secs] [Times: user=3.20 sys=0.01, real=0.95 secs]

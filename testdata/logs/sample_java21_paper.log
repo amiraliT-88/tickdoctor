@@ -1,0 +1,17 @@
+[0.002s][info][gc] Using G1
+[0.002s][info][gc,init] Version: 21.0.3+9-LTS (release)
+[0.002s][info][gc,init] CPUs: 8 total, 8 available
+[0.002s][info][gc,init] Memory: 16384M
+[0.002s][info][gc,init] Heap Region Size: 4M
+[0.002s][info][gc,init] Heap Min Capacity: 2048M
+[0.002s][info][gc,init] Heap Initial Capacity: 2048M
+[0.002s][info][gc,init] Heap Max Capacity: 4096M
+[0.002s][info][gc,init] Pre-touch: Disabled
+[2026-11-15T18:04:10.000+0300][10.000s][info][gc] GC(0) Pause Young (Normal) (G1 Evacuation Pause) 120M->40M(4096M) 12.100ms
+[2026-11-15T18:04:25.000+0300][25.000s][info][gc] GC(1) Pause Young (Normal) (G1 Evacuation Pause) 240M->80M(4096M) 18.450ms
+[2026-11-15T18:04:40.000+0300][40.000s][info][gc] GC(2) Pause Young (Normal) (G1 Evacuation Pause) 360M->120M(4096M) 24.300ms
+[2026-11-15T18:05:00.000+0300][60.000s][info][gc] GC(3) Pause Young (Normal) (G1 Evacuation Pause) 480M->160M(4096M) 34.200ms
+[2026-11-15T18:05:30.000+0300][90.000s][info][gc,heap] GC(4) Humongous regions: 0->25
+[2026-11-15T18:05:30.050+0300][90.050s][info][gc     ] GC(4) Pause Young (Normal) (G1 Evacuation Pause) 800M->350M(4096M) 75.120ms
+[2026-11-15T18:06:00.000+0300][120.000s][info][gc     ] GC(5) Pause Full (System.gc()) 1500M->250M(4096M) 1620.500ms
+[2026-11-15T18:06:40.000+0300][160.000s][info][gc     ] GC(6) Pause Young (Normal) (G1 Evacuation Pause) (to-space exhausted) 3900M->3800M(4096M) 340.200ms
