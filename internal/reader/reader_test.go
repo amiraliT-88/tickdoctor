@@ -68,3 +68,37 @@ func TestOpenStreamGzip(t *testing.T) {
 		t.Fatalf("unexpected gzip content: %v", lines)
 	}
 }
+
+func TestDiscoverRotatedLogs(t *testing.T) {
+	dir := t.TempDir()
+
+	older := filepath.Join(dir, "gc.log.1")
+	newer := filepath.Join(dir, "gc.log")
+	unrelated := filepath.Join(dir, "other_gc.log")
+	lockfile := filepath.Join(dir, "gc.log.lck")
+
+	if err := os.WriteFile(older, []byte("[2026-11-15T10:00:00.000+0000][info][gc] GC(0) ...\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(newer, []byte("[2026-11-15T12:00:00.000+0000][info][gc] GC(10) ...\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(unrelated, []byte("unrelated\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(lockfile, []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := DiscoverRotatedLogs(newer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(files) != 2 {
+		t.Fatalf("expected 2 rotated files (excluding other_gc.log and .lck), got %v", files)
+	}
+	if files[0] != older || files[1] != newer {
+		t.Errorf("expected chronological order [%s, %s], got %v", older, newer, files)
+	}
+}

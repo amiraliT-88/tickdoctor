@@ -57,10 +57,11 @@ func DiscoverRotatedLogs(basePath string) ([]string, error) {
 	}
 
 	dir := basePath
-	prefix := "gc"
-	if !fi.IsDir() {
+	stem := "gc.log"
+	isDir := fi.IsDir()
+	if !isDir {
 		dir = filepath.Dir(basePath)
-		prefix = strings.TrimSuffix(filepath.Base(basePath), filepath.Ext(basePath))
+		stem = rotationStem(filepath.Base(basePath))
 	}
 
 	entries, err := os.ReadDir(dir)
@@ -74,8 +75,19 @@ func DiscoverRotatedLogs(basePath string) ([]string, error) {
 			continue
 		}
 		name := e.Name()
-		if !strings.HasPrefix(name, prefix) && !strings.Contains(name, "gc") {
+		lower := strings.ToLower(name)
+		if strings.HasSuffix(lower, ".lck") || strings.HasSuffix(lower, ".tmp") || strings.HasSuffix(lower, ".bak") {
 			continue
+		}
+
+		if isDir {
+			if name != "gc.log" && !strings.HasPrefix(name, "gc.log.") && !strings.HasPrefix(name, "gc-") {
+				continue
+			}
+		} else {
+			if name != stem && !strings.HasPrefix(name, stem+".") {
+				continue
+			}
 		}
 
 		fullPath := filepath.Join(dir, name)
@@ -84,19 +96,29 @@ func DiscoverRotatedLogs(basePath string) ([]string, error) {
 			continue
 		}
 
-		rf := RotatedFile{
-			Path:    fullPath,
-			ModTime: info.ModTime(),
-		}
-		matched = append(matched, rf)
+		matched = append(matched, RotatedFile{
+			Path:      fullPath,
+			FirstTime: extractFirstTimestamp(fullPath),
+			ModTime:   info.ModTime(),
+		})
 	}
 
 	if len(matched) == 0 {
+		if isDir {
+			return nil, os.ErrNotExist
+		}
 		return []string{basePath}, nil
 	}
 
 	sort.Slice(matched, func(i, j int) bool {
-		return matched[i].ModTime.Before(matched[j].ModTime)
+		ti, tj := matched[i].FirstTime, matched[j].FirstTime
+		if !ti.IsZero() && !tj.IsZero() && !ti.Equal(tj) {
+			return ti.Before(tj)
+		}
+		if !matched[i].ModTime.Equal(matched[j].ModTime) {
+			return matched[i].ModTime.Before(matched[j].ModTime)
+		}
+		return matched[i].Path < matched[j].Path
 	})
 
 	res := make([]string, len(matched))
@@ -104,4 +126,71 @@ func DiscoverRotatedLogs(basePath string) ([]string, error) {
 		res[i] = m.Path
 	}
 	return res, nil
+}
+
+func rotationStem(name string) string {
+	s := name
+	if strings.HasSuffix(strings.ToLower(s), ".gz") {
+		s = s[:len(s)-3]
+	}
+	if strings.HasSuffix(strings.ToLower(s), ".current") {
+		s = s[:len(s)-len(".current")]
+	}
+	if idx := strings.LastIndexByte(s, '.'); idx > 0 {
+		suffix := s[idx+1:]
+		allDigits := len(suffix) > 0
+		for i := 0; i < len(suffix); i++ {
+			if suffix[i] < '0' || suffix[i] > '9' {
+				allDigits = false
+				break
+			}
+		}
+		if allDigits {
+			s = s[:idx]
+		}
+	}
+	return s
+}
+
+func extractFirstTimestamp(path string) time.Time {
+	closer, scanner, err := OpenStream(path)
+	if err != nil {
+		return time.Time{}
+	}
+	defer closer.Close()
+
+	layouts := []string{
+		"2006-01-02T15:04:05.000-0700",
+		"2006-01-02T15:04:05.000Z07:00",
+		"2006-01-02T15:04:05.000",
+		time.RFC3339Nano,
+		time.RFC3339,
+	}
+
+	for i := 0; i < 25 && scanner.Scan(); i++ {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "[") {
+			end := strings.IndexByte(line, ']')
+			if end > 1 {
+				tok := strings.TrimSpace(line[1:end])
+				for _, l := range layouts {
+					if t, err := time.Parse(l, tok); err == nil {
+						return t
+					}
+				}
+			}
+		}
+		if idx := strings.Index(line, ": "); idx > 10 && idx < 40 {
+			tok := strings.TrimSpace(line[:idx])
+			for _, l := range layouts {
+				if t, err := time.Parse(l, tok); err == nil {
+					return t
+				}
+			}
+		}
+	}
+	return time.Time{}
 }
