@@ -1,0 +1,7 @@
+[18:04:00] [Server thread/INFO]: Starting minecraft server version 1.20.4
+[18:04:00] [Server thread/INFO]: Loading Paper 1.20.4-R0.1-SNAPSHOT
+[18:04:03] [Server thread/INFO]: Preparing start region for dimension minecraft:overworld
+[18:04:05] [Server thread/INFO]: Done (5.123s)! For help, type "help"
+[18:05:30] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 82ms or 1 ticks behind
+[18:06:01] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 1640ms or 32 ticks behind
+[18:06:40] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 355ms or 7 ticks behind

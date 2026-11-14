@@ -1,0 +1,6 @@
+[18:04:00] [Server thread/INFO]: Starting minecraft server version 1.20.4
+[18:04:00] [Server thread/INFO]: Loading Purpur 1.20.4-R0.1-SNAPSHOT
+[18:04:05] [Server thread/INFO]: Done (4.982s)! For help, type "help"
+[18:10:00] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 3800ms or 76 ticks behind
+[18:12:30] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 5120ms or 102 ticks behind
+[18:15:00] [Spigot Watchdog Thread/FATAL]: A single server tick took 60.00 seconds (should be at most 0.05)
