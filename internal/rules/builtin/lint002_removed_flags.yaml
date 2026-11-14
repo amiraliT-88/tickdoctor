@@ -1,0 +1,9 @@
+id: LINT-002
+title: Deprecated or Removed Flags on Modern Java
+severity: WARNING
+collector: All
+condition_type: removed_flags
+threshold: 1
+recommendation: remove obsolete flags inherited from Java 8 guides
+explanation: Obsolete JVM flags like -XX:+UseConcMarkSweepGC, -XX:+CMSIncrementalMode, -Xincgc, or -XX:MaxPermSize were removed in modern Java runtimes and will cause launch errors or be ignored.
+doc_url: https://docs.papermc.io/paper/aikars-flags

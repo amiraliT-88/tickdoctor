@@ -1,0 +1,9 @@
+id: GC-001
+title: Explicit System.gc() Pause Detected
+severity: CRITICAL
+collector: All
+condition_type: explicit_gc_count
+threshold: 1
+recommendation: add -XX:+DisableExplicitGC
+explanation: A plugin or mod is explicitly calling System.gc(), which forces a full Stop-The-World garbage collection cycle and freezes server ticking.
+doc_url: https://docs.papermc.io/paper/aikars-flags

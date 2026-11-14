@@ -1,0 +1,9 @@
+id: GC-002
+title: G1 Evacuation Failure (To-Space Exhausted)
+severity: CRITICAL
+collector: G1
+condition_type: evacuation_failure_count
+threshold: 1
+recommendation: increase -Xmx or add -XX:G1ReservePercent=15
+explanation: The G1 collector ran out of free survivor regions during an evacuation pause. This causes expensive memory compaction and severe tick stalls.
+doc_url: https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-g1-garbage-collector1.html

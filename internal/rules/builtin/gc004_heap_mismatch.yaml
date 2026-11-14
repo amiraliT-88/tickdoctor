@@ -1,0 +1,9 @@
+id: GC-004
+title: Initial and Max Heap Mismatch
+severity: WARNING
+collector: All
+condition_type: heap_mismatch
+threshold: 0
+recommendation: set -Xms equal to -Xmx
+explanation: When -Xms is lower than -Xmx, the JVM dynamically allocates and returns OS memory during spikes, introducing latency spikes as the heap resizes.
+doc_url: https://docs.papermc.io/paper/aikars-flags

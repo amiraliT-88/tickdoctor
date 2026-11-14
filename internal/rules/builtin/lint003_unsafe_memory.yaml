@@ -1,0 +1,9 @@
+id: LINT-003
+title: Dangerous Heap Allocation Relative to System RAM
+severity: CRITICAL
+collector: All
+condition_type: unsafe_memory
+threshold: 0
+recommendation: reduce -Xmx to leave at least 1.5GB - 2GB free for the OS and off-heap memory
+explanation: Setting -Xmx equal to or near the host server's total RAM causes OS out-of-memory (OOM) killer terminations, because Minecraft uses additional off-heap memory for Netty networking, native chunk compressors, and thread stacks.
+doc_url: https://docs.papermc.io/paper/aikars-flags

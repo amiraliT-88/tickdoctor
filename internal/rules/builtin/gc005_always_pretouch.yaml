@@ -1,0 +1,9 @@
+id: GC-005
+title: AlwaysPreTouch Flag Disabled
+severity: INFO
+collector: All
+condition_type: pretouch_disabled
+threshold: 0
+recommendation: add -XX:+AlwaysPreTouch
+explanation: Without pre-touching, the OS maps physical memory lazily upon first access during gameplay, creating brief micro-stutters when chunks or player entities cause memory expansion.
+doc_url: https://docs.papermc.io/paper/aikars-flags

@@ -1,0 +1,9 @@
+id: JAVA8-001
+title: Unintentional Throughput Parallel GC on Java 8
+severity: WARNING
+collector: Parallel
+condition_type: java8_parallel
+threshold: 1
+recommendation: switch to G1GC by adding -XX:+UseG1GC with Aikar flags
+explanation: Parallel GC is the default garbage collector on Java 8. While it maximizes throughput for batch jobs, it uses Stop-The-World pauses that cause periodic multi-second tick stutters in multiplayer servers.
+doc_url: https://docs.papermc.io/paper/aikars-flags

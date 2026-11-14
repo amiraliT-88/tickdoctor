@@ -1,0 +1,9 @@
+id: GC-003
+title: Frequent Humongous Object Allocations
+severity: WARNING
+collector: G1
+condition_type: humongous_count
+threshold: 20
+recommendation: increase -XX:G1HeapRegionSize (e.g. 16M or 32M)
+explanation: Allocations larger than 50% of the G1 region size bypass the Eden space and allocate directly in Old Gen as contiguous regions, inducing premature mixed collections.
+doc_url: https://docs.oracle.com/en/java/javase/21/gctuning/garbage-first-g1-garbage-collector1.html#GUID-0CD10D08-2A27-4632-B833-D66D8E42FA54

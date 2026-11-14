@@ -1,0 +1,9 @@
+id: JAVA8-002
+title: CMS Concurrent Mode Failure Triggered Full GC
+severity: CRITICAL
+collector: CMS
+condition_type: cms_failure
+threshold: 1
+recommendation: increase heap size or migrate to G1GC (-XX:+UseG1GC)
+explanation: The CMS collector could not finish sweeping old gen before it ran completely full, triggering an emergency Stop-The-World Full GC that froze the server for multiple seconds.
+doc_url: https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/cms.html
