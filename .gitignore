@@ -6,7 +6,7 @@ dist/
 *.dll
 *.so
 *.dylib
-tickdoctor
+/tickdoctor
 
 # Test artifacts
 *.test
@@ -25,3 +25,5 @@ Thumbs.db
 
 # Local scratch and logs
 *.log
+!testdata/logs/*.log
+!testdata/serverlogs/*.log
