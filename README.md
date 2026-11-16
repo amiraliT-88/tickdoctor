@@ -4,8 +4,6 @@ A local CLI and TUI tool for diagnosing JVM garbage collection pauses and lag sp
 
 Written in Go. It reads your `gc.log`, `latest.log`, and startup flags to answer whether server freezes are actually caused by GC, show the exact log evidence, and give you a flag diff to fix them.
 
-> Note: TickDoctor is currently in active early development (starting from `v0.1`). Check the project roadmap before expecting prebuilt binaries.
-
 ## When this helps (and when it doesn't)
 
 Minecraft lag usually falls into two buckets:
@@ -17,7 +15,7 @@ TickDoctor compares timestamps between `gc.log` and `latest.log`. If GC pauses d
 
 ## Features
 
-- **Java 8 and Java 17+ support:** Handles both legacy Java 8 logs (`Parallel`, `G1`, `CMS`) and Java 17+ unified logging (`G1`, with generational `ZGC` planned for `v1.0`).
+- **Java 8 and Java 17+ support:** Handles both legacy Java 8 logs (`Parallel`, `G1`, `CMS`) and Java 17+ unified logging (`G1`, Generational `ZGC`).
 - **Missing & broken flag detection:** Combines your `start.sh` / `start.bat` / `user_jvm_args.txt` with what's recorded in the GC log header to catch missing flags, outdated Java 8 flags left on Java 21, and unsafe heap sizes.
 - **Zero-log `lint` mode:** Checks startup scripts for deprecated flags, conflicting collectors, or dangerous `-Xmx` values in seconds without needing a GC log first.
 - **Lag correlation:** Lines up `Can't keep up!` and Spigot/Paper Watchdog entries in `latest.log` against GC stop-the-world pauses.
@@ -27,7 +25,7 @@ TickDoctor compares timestamps between `gc.log` and `latest.log`. If GC pauses d
 
 | Command | Description |
 | :--- | :--- |
-| `setup` | Prints the exact GC logging flags for your Java version and server platform (Paper, Forge, Fabric, Pterodactyl). |
+| `setup` | Prints the exact GC logging flags for your Java version. |
 | `lint` | Audits a startup command or script (`start.sh`, `start.bat`, `user_jvm_args.txt`) without any log files. |
 | `analyze` | Parses `gc.log` (including rotated and `.gz` files) and opens the interactive TUI. |
 | `watch` | Tails an active server's GC log (or inspects a running `--pid`) live in the terminal. |
@@ -62,7 +60,7 @@ tickdoctor lint --cmd ./start.sh --ram 16G
 Generate the right GC logging flags if you haven't enabled them yet:
 
 ```sh
-tickdoctor setup --java 21 --server paper
+tickdoctor setup --java 21
 ```
 
 Run inside a server directory (auto-detects `./logs/gc.log`, `./logs/latest.log`, and `./start.sh` / `./start.bat`):
@@ -77,15 +75,21 @@ Pass paths explicitly or export a redacted Markdown report for Discord:
 tickdoctor report --gc-log ./logs/gc.log --server-log ./logs/latest.log --format markdown --redact
 ```
 
+## Documentation
+
+- [Diagnostic Rules Reference](docs/rules.md) — Complete list of all built-in GC and flag rules with explanations and documentation links.
+- [How It Works](docs/how-it-works.md) — Technical deep-dive into the streaming reader, multi-generation parsers, and lag correlation algorithm.
+- [Contributing Rules](docs/contributing-rules.md) — Guide for adding new diagnostic YAML heuristics.
+
 ## Supported targets
 
-- **Java 17, 21, 25 (`-Xlog:gc*`):** G1GC (`ZGC` planned for `v1.0`)
+- **Java 17, 21, 25 (`-Xlog:gc*`):** G1GC, Generational ZGC
 - **Java 8 (`-XX:+PrintGCDetails`):** Parallel GC, G1GC, CMS
-- **Server logs:** Vanilla, Paper, Purpur, Spigot, Forge, Fabric
+- **Server logs:** Vanilla, Paper, Purpur, Spigot, Folia, Fabric, Forge
 
 ## Build from source
 
-Requires Go 1.23 or newer:
+Requires Go 1.24 or newer:
 
 ```sh
 git clone https://github.com/amiraliT-88/tickdoctor.git
