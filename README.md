@@ -1,5 +1,10 @@
 # TickDoctor
 
+[![CI](https://github.com/amiraliT-88/tickdoctor/actions/workflows/ci.yml/badge.svg)](https://github.com/amiraliT-88/tickdoctor/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/amiraliT-88/tickdoctor)](https://github.com/amiraliT-88/tickdoctor/releases)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/amiraliT-88/tickdoctor)](go.mod)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A local CLI and TUI tool for diagnosing JVM garbage collection pauses and lag spikes on Minecraft servers.
 
 Written in Go. It reads your `gc.log`, `latest.log`, and startup flags to answer whether server freezes are actually caused by GC, show the exact log evidence, and give you a flag diff to fix them.
