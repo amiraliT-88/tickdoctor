@@ -1,0 +1,41 @@
+name: Render Demo GIF
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Build tickdoctor
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          go build -o "$HOME/.local/bin/tickdoctor" ./cmd/tickdoctor
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Render VHS Tape
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: demo.tape
+
+      - name: Commit Demo GIF
+        run: |
+          git config user.name "amiraliT-88"
+          git config user.email "amirali.fort88@gmail.com"
+          git add assets/demo.gif
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: render terminal demo GIF"
+            git push
+          fi

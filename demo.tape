@@ -21,7 +21,7 @@ Type "clear"
 Enter
 Sleep 500ms
 
-Type "tickdoctor analyze"
+Type "tickdoctor analyze -g testdata/logs/sample_java21_paper.log -s testdata/serverlogs/sample_latest.log"
 Sleep 500ms
 Enter
 Sleep 3s
