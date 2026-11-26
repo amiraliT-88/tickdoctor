@@ -57,7 +57,7 @@ func newAnalyzeCmd() *cobra.Command {
 		Use:   "analyze",
 		Short: "Analyze GC log and report pause metrics and suggested JVM flag fixes",
 		Run: func(cmd *cobra.Command, args []string) {
-			executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath, redact, noTUI)
+			os.Exit(executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath, redact, noTUI))
 		},
 	}
 
@@ -83,7 +83,7 @@ func newReportCmd() *cobra.Command {
 		Use:   "report",
 		Short: "Generate non-interactive diagnostic report (text, markdown, json)",
 		Run: func(cmd *cobra.Command, args []string) {
-			executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath, redact, true)
+			os.Exit(executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath, redact, true))
 		},
 	}
 
@@ -96,26 +96,26 @@ func newReportCmd() *cobra.Command {
 	return cmd
 }
 
-func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath string, redact, noTUI bool) {
+func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath string, redact, noTUI bool) int {
 	format = strings.ToLower(strings.TrimSpace(format))
 	switch format {
 	case "", "text", "markdown", "md", "json":
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unsupported output format %q (valid: text, markdown, json)\n", format)
-		os.Exit(3)
+		return 3
 	}
 
 	path := findGCLog(gcLogPath)
 	if path == "" {
 		fmt.Fprintln(os.Stderr, "Error: no GC log found. Specify with --gc-log <path> or run inside a Minecraft server directory.")
 		fmt.Fprintln(os.Stderr, "Tip: If GC logging is not enabled yet, run 'tickdoctor setup' for instructions.")
-		os.Exit(3)
+		return 3
 	}
 
 	files, err := reader.DiscoverRotatedLogs(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading logs: %v\n", err)
-		os.Exit(3)
+		return 3
 	}
 
 	logFormat := detect.FormatUnified
@@ -168,7 +168,7 @@ func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath strin
 
 	if len(events) == 0 {
 		fmt.Fprintf(os.Stderr, "Error: no recognizable GC events found in %s\n", path)
-		os.Exit(3)
+		return 3
 	}
 
 	metrics := analyzer.Analyze(events, 0)
@@ -176,7 +176,7 @@ func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath strin
 	engine, err := rules.NewEngine()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error initializing rule engine: %v\n", err)
-		os.Exit(3)
+		return 3
 	}
 
 	findings := engine.Evaluate(metrics, jvm)
@@ -260,7 +260,7 @@ func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath strin
 		f, err := os.Create(outputPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating output file %s: %v\n", outputPath, err)
-			os.Exit(3)
+			return 3
 		}
 		outFile = f
 		outWriter = f
@@ -277,7 +277,7 @@ func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath strin
 				outFile.Close()
 			}
 			fmt.Fprintf(os.Stderr, "Error rendering JSON: %v\n", err)
-			os.Exit(3)
+			return 3
 		}
 	} else if format == "markdown" || format == "md" {
 		markdown.Render(outWriter, jvm, metrics, findings, corrReport, markdown.Options{Redact: redact})
@@ -298,19 +298,19 @@ func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath strin
 	if outFile != nil {
 		if err := outFile.Close(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error closing output file %s: %v\n", outputPath, err)
-			os.Exit(3)
+			return 3
 		}
 	}
 
 	for _, f := range findings {
 		if f.Rule.Severity == rules.SeverityCritical {
-			os.Exit(2)
+			return 2
 		}
 	}
 	if len(findings) > 0 {
-		os.Exit(1)
+		return 1
 	}
-	os.Exit(0)
+	return 0
 }
 
 func newSetupCmd() *cobra.Command {
@@ -348,93 +348,7 @@ func newLintCmd() *cobra.Command {
 		Use:   "lint",
 		Short: "Audit startup script or JVM command flags without log files",
 		Run: func(cmd *cobra.Command, args []string) {
-			target := findStartupScript(cmdInput)
-			if target == "" {
-				fmt.Fprintln(os.Stderr, "Error: no startup command or script specified.")
-				fmt.Fprintln(os.Stderr, "Usage: tickdoctor lint --cmd <path-or-string> [--ram 16G] [--java 21]")
-				os.Exit(3)
-			}
-
-			parsed, err := flags.ParseScriptOrString(target)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error reading startup script: %v\n", err)
-				os.Exit(3)
-			}
-
-			systemRAM := flags.ParseSize(ramInput)
-
-			engine, err := rules.NewEngine()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error initializing rule engine: %v\n", err)
-				os.Exit(3)
-			}
-
-			findings := engine.EvaluateFlags(
-				parsed.AllFlags,
-				parsed.HeapMin,
-				parsed.HeapMax,
-				parsed.PreTouch,
-				parsed.DisableGC,
-				systemRAM,
-				javaVersion,
-			)
-
-			fmt.Println("=== TickDoctor Startup Flags Audit ===")
-			fmt.Println()
-			fmt.Printf("Target Script / Command: %s\n", target)
-			if parsed.Collector != "" {
-				fmt.Printf("  Collector:  %s\n", parsed.Collector)
-			}
-			if parsed.HeapMax > 0 {
-				fmt.Printf("  Max Heap:   %d MB\n", parsed.HeapMax/(1024*1024))
-			}
-			if parsed.HeapMin > 0 {
-				fmt.Printf("  Init Heap:  %d MB\n", parsed.HeapMin/(1024*1024))
-			}
-			if systemRAM > 0 {
-				fmt.Printf("  Host RAM:   %d MB\n", systemRAM/(1024*1024))
-			}
-			fmt.Println()
-
-			if len(findings) == 0 {
-				fmt.Println("Result: [HEALTHY] No flag conflicts or anti-patterns detected.")
-				os.Exit(0)
-			}
-
-			fmt.Printf("Detected Issues (%d):\n", len(findings))
-			var actionPlan []string
-			hasCritical := false
-
-			for _, f := range findings {
-				fmt.Printf("  [%s] %s (%s)\n", f.Rule.Severity, f.Rule.Title, f.Rule.ID)
-				if f.Evidence != "" {
-					fmt.Printf("    Evidence:       %s\n", f.Evidence)
-				}
-				if f.Recommendation != "" {
-					fmt.Printf("    Recommendation: %s\n", f.Recommendation)
-					actionPlan = append(actionPlan, f.Recommendation)
-				}
-				if f.Rule.Explanation != "" {
-					fmt.Printf("    Why:            %s\n", f.Rule.Explanation)
-				}
-				fmt.Println()
-				if f.Rule.Severity == rules.SeverityCritical {
-					hasCritical = true
-				}
-			}
-
-			if len(actionPlan) > 0 {
-				fmt.Println("Suggested Action Plan:")
-				for _, a := range actionPlan {
-					fmt.Printf("  * %s\n", a)
-				}
-				fmt.Println()
-			}
-
-			if hasCritical {
-				os.Exit(2)
-			}
-			os.Exit(1)
+			os.Exit(executeLint(cmdInput, ramInput, javaVersion))
 		},
 	}
 
@@ -442,6 +356,96 @@ func newLintCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&ramInput, "ram", "r", "", "Host machine total RAM size (e.g. 16G, 32G)")
 	cmd.Flags().IntVarP(&javaVersion, "java", "j", 21, "Target Java major version (defaults to 21)")
 	return cmd
+}
+
+func executeLint(cmdInput, ramInput string, javaVersion int) int {
+	target := findStartupScript(cmdInput)
+	if target == "" {
+		fmt.Fprintln(os.Stderr, "Error: no startup command or script specified.")
+		fmt.Fprintln(os.Stderr, "Usage: tickdoctor lint --cmd <path-or-string> [--ram 16G] [--java 21]")
+		return 3
+	}
+
+	parsed, err := flags.ParseScriptOrString(target)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading startup script: %v\n", err)
+		return 3
+	}
+
+	systemRAM := flags.ParseSize(ramInput)
+
+	engine, err := rules.NewEngine()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing rule engine: %v\n", err)
+		return 3
+	}
+
+	findings := engine.EvaluateFlags(
+		parsed.AllFlags,
+		parsed.HeapMin,
+		parsed.HeapMax,
+		parsed.PreTouch,
+		parsed.DisableGC,
+		systemRAM,
+		javaVersion,
+	)
+
+	fmt.Println("=== TickDoctor Startup Flags Audit ===")
+	fmt.Println()
+	fmt.Printf("Target Script / Command: %s\n", target)
+	if parsed.Collector != "" {
+		fmt.Printf("  Collector:  %s\n", parsed.Collector)
+	}
+	if parsed.HeapMax > 0 {
+		fmt.Printf("  Max Heap:   %d MB\n", parsed.HeapMax/(1024*1024))
+	}
+	if parsed.HeapMin > 0 {
+		fmt.Printf("  Init Heap:  %d MB\n", parsed.HeapMin/(1024*1024))
+	}
+	if systemRAM > 0 {
+		fmt.Printf("  Host RAM:   %d MB\n", systemRAM/(1024*1024))
+	}
+	fmt.Println()
+
+	if len(findings) == 0 {
+		fmt.Println("Result: [HEALTHY] No flag conflicts or anti-patterns detected.")
+		return 0
+	}
+
+	fmt.Printf("Detected Issues (%d):\n", len(findings))
+	var actionPlan []string
+	hasCritical := false
+
+	for _, f := range findings {
+		fmt.Printf("  [%s] %s (%s)\n", f.Rule.Severity, f.Rule.Title, f.Rule.ID)
+		if f.Evidence != "" {
+			fmt.Printf("    Evidence:       %s\n", f.Evidence)
+		}
+		if f.Recommendation != "" {
+			fmt.Printf("    Recommendation: %s\n", f.Recommendation)
+			actionPlan = append(actionPlan, f.Recommendation)
+		}
+		if f.Rule.Explanation != "" {
+			fmt.Printf("    Why:            %s\n", f.Rule.Explanation)
+		}
+		fmt.Println()
+		if f.Rule.Severity == rules.SeverityCritical {
+			hasCritical = true
+		}
+	}
+
+	if len(actionPlan) > 0 {
+		fmt.Println("Suggested Action Plan:")
+		for _, a := range actionPlan {
+			fmt.Printf("  * %s\n", a)
+		}
+		fmt.Println()
+	}
+
+	if hasCritical {
+		return 2
+	}
+	return 1
 }
 
 func findStartupScript(explicit string) string {
