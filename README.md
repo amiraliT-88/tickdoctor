@@ -92,9 +92,15 @@ tickdoctor report --gc-log ./logs/gc.log --server-log ./logs/latest.log --format
 - **Java 8 (`-XX:+PrintGCDetails`):** Parallel GC, G1GC, CMS
 - **Server logs:** Vanilla, Paper, Purpur, Spigot, Folia, Fabric, Forge
 
-## Build from source
+## Installation
 
-Requires Go 1.24 or newer:
+Download a prebuilt binary for Linux, macOS, or Windows from [GitHub Releases](https://github.com/amiraliT-88/tickdoctor/releases), or install directly with Go (1.24+):
+
+```sh
+go install github.com/amiraliT-88/tickdoctor/cmd/tickdoctor@latest
+```
+
+### Build from source
 
 ```sh
 git clone https://github.com/amiraliT-88/tickdoctor.git
