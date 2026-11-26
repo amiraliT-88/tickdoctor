@@ -9,6 +9,7 @@ import (
 
 	"github.com/amiraliT-88/tickdoctor/internal/analyzer"
 	"github.com/amiraliT-88/tickdoctor/internal/correlate"
+	"github.com/amiraliT-88/tickdoctor/internal/diff"
 	"github.com/amiraliT-88/tickdoctor/internal/flags"
 	"github.com/amiraliT-88/tickdoctor/internal/model"
 	"github.com/amiraliT-88/tickdoctor/internal/parser/detect"
@@ -35,6 +36,7 @@ func main() {
 
 	rootCmd.AddCommand(newAnalyzeCmd())
 	rootCmd.AddCommand(newReportCmd())
+	rootCmd.AddCommand(newDiffCmd())
 	rootCmd.AddCommand(newLintCmd())
 	rootCmd.AddCommand(newSetupCmd())
 	rootCmd.AddCommand(newWatchCmd())
@@ -112,58 +114,10 @@ func executeAnalysis(gcLogPath, serverLogPath, cmdPath, format, outputPath strin
 		return 3
 	}
 
-	files, err := reader.DiscoverRotatedLogs(path)
+	events, jvm, err := parseGCLogFiles(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading logs: %v\n", err)
 		return 3
-	}
-
-	logFormat := detect.FormatUnified
-	if firstCloser, firstScanner, err := reader.OpenStream(files[0]); err == nil {
-		var headLines strings.Builder
-		for i := 0; i < 50 && firstScanner.Scan(); i++ {
-			headLines.WriteString(firstScanner.Text())
-			headLines.WriteByte('\n')
-		}
-		firstCloser.Close()
-		if detected, err := detect.DetectFormat(strings.NewReader(headLines.String())); err == nil && detected != detect.FormatUnknown {
-			logFormat = detected
-		}
-	}
-
-	var events []*model.GCEvent
-	var jvm model.JVMInfo
-
-	if logFormat == detect.FormatLegacy {
-		lp := legacy.NewParser()
-		for _, f := range files {
-			closer, scanner, err := reader.OpenStream(f)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to open %s: %v\n", f, err)
-				continue
-			}
-			for scanner.Scan() {
-				lp.ParseLine(scanner.Text())
-			}
-			closer.Close()
-		}
-		events = lp.Events()
-		jvm = lp.JVM
-	} else {
-		up := unified.NewParser()
-		for _, f := range files {
-			closer, scanner, err := reader.OpenStream(f)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to open %s: %v\n", f, err)
-				continue
-			}
-			for scanner.Scan() {
-				up.ParseLine(scanner.Text())
-			}
-			closer.Close()
-		}
-		events = up.Events()
-		jvm = up.JVM
 	}
 
 	if len(events) == 0 {
@@ -527,4 +481,113 @@ func findServerLog(gcLogPath string) string {
 		}
 	}
 	return ""
+}
+
+func newDiffCmd() *cobra.Command {
+	var format string
+
+	cmd := &cobra.Command{
+		Use:   "diff <before-gc.log> <after-gc.log>",
+		Short: "Compare two GC logs before and after flag changes",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			os.Exit(executeDiff(args[0], args[1], format))
+		},
+	}
+
+	cmd.Flags().StringVarP(&format, "format", "f", "text", "Output format: text, json")
+	return cmd
+}
+
+func executeDiff(beforePath, afterPath, format string) int {
+	format = strings.ToLower(strings.TrimSpace(format))
+	if format != "" && format != "text" && format != "json" {
+		fmt.Fprintf(os.Stderr, "Error: unsupported output format %q (valid: text, json)\n", format)
+		return 3
+	}
+
+	beforeEvents, _, err := parseGCLogFiles(beforePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading %s: %v\n", beforePath, err)
+		return 3
+	}
+	if len(beforeEvents) == 0 {
+		fmt.Fprintf(os.Stderr, "Error: no recognizable GC events found in %s\n", beforePath)
+		return 3
+	}
+
+	afterEvents, _, err := parseGCLogFiles(afterPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading %s: %v\n", afterPath, err)
+		return 3
+	}
+	if len(afterEvents) == 0 {
+		fmt.Fprintf(os.Stderr, "Error: no recognizable GC events found in %s\n", afterPath)
+		return 3
+	}
+
+	beforeMetrics := analyzer.Analyze(beforeEvents, 0)
+	afterMetrics := analyzer.Analyze(afterEvents, 0)
+	rep := diff.Compare(beforeMetrics, afterMetrics)
+
+	if format == "json" {
+		if err := diff.RenderJSON(os.Stdout, rep); err != nil {
+			fmt.Fprintf(os.Stderr, "Error rendering diff JSON: %v\n", err)
+			return 3
+		}
+		return 0
+	}
+
+	diff.RenderText(os.Stdout, beforePath, afterPath, rep)
+	return 0
+}
+
+func parseGCLogFiles(path string) ([]*model.GCEvent, model.JVMInfo, error) {
+	files, err := reader.DiscoverRotatedLogs(path)
+	if err != nil {
+		return nil, model.JVMInfo{}, err
+	}
+
+	logFormat := detect.FormatUnified
+	if firstCloser, firstScanner, err := reader.OpenStream(files[0]); err == nil {
+		var headLines strings.Builder
+		for i := 0; i < 50 && firstScanner.Scan(); i++ {
+			headLines.WriteString(firstScanner.Text())
+			headLines.WriteByte('\n')
+		}
+		firstCloser.Close()
+		if detected, err := detect.DetectFormat(strings.NewReader(headLines.String())); err == nil && detected != detect.FormatUnknown {
+			logFormat = detected
+		}
+	}
+
+	if logFormat == detect.FormatLegacy {
+		lp := legacy.NewParser()
+		for _, f := range files {
+			closer, scanner, err := reader.OpenStream(f)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to open %s: %v\n", f, err)
+				continue
+			}
+			for scanner.Scan() {
+				lp.ParseLine(scanner.Text())
+			}
+			closer.Close()
+		}
+		return lp.Events(), lp.JVM, nil
+	}
+
+	up := unified.NewParser()
+	for _, f := range files {
+		closer, scanner, err := reader.OpenStream(f)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to open %s: %v\n", f, err)
+			continue
+		}
+		for scanner.Scan() {
+			up.ParseLine(scanner.Text())
+		}
+		closer.Close()
+	}
+	return up.Events(), up.JVM, nil
 }

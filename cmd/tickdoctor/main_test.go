@@ -94,3 +94,21 @@ func TestExtractXlogFile(t *testing.T) {
 		}
 	}
 }
+
+func TestExecuteDiff(t *testing.T) {
+	beforeLog := filepath.Join("..", "..", "testdata", "logs", "sample_java8_parallel.log")
+	afterLog := filepath.Join("..", "..", "testdata", "logs", "sample_java21_paper.log")
+
+	if code := executeDiff(beforeLog, afterLog, "text"); code != 0 {
+		t.Errorf("expected exit code 0 for text diff, got %d", code)
+	}
+	if code := executeDiff(beforeLog, afterLog, "json"); code != 0 {
+		t.Errorf("expected exit code 0 for json diff, got %d", code)
+	}
+	if code := executeDiff(beforeLog, afterLog, "xml"); code != 3 {
+		t.Errorf("expected exit code 3 for invalid diff format, got %d", code)
+	}
+	if code := executeDiff(filepath.Join(t.TempDir(), "missing.log"), afterLog, "text"); code != 3 {
+		t.Errorf("expected exit code 3 for missing diff input, got %d", code)
+	}
+}
