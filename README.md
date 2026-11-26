@@ -22,7 +22,7 @@ TickDoctor compares timestamps between `gc.log` and `latest.log`. If GC pauses d
 
 ## Features
 
-- **Java 8 and Java 9+ support:** Handles both legacy Java 8 logs (`Parallel`, `G1`, `CMS`) and modern unified logging (`-Xlog:gc*` across Java 9–26+, `G1`, Generational `ZGC`).
+- **Java 8 and Java 9+ support:** Handles both legacy Java 8 logs (`Parallel`, `G1`, `CMS`) and modern unified logging (`-Xlog:gc*` across Java 9–26+, `G1`, Generational `ZGC`, `Shenandoah`).
 - **Missing & broken flag detection:** Combines your `start.sh` / `start.bat` / `user_jvm_args.txt` with what's recorded in the GC log header to catch missing flags, outdated Java 8 flags left on Java 21, and unsafe heap sizes.
 - **Zero-log `lint` mode:** Checks startup scripts for deprecated flags, conflicting collectors, or dangerous `-Xmx` values in seconds without needing a GC log first.
 - **Lag correlation:** Lines up `Can't keep up!` and Spigot/Paper Watchdog entries in `latest.log` against GC stop-the-world pauses.
@@ -37,6 +37,7 @@ TickDoctor compares timestamps between `gc.log` and `latest.log`. If GC pauses d
 | `analyze` | Parses `gc.log` (including rotated and `.gz` files) and opens the interactive TUI. |
 | `watch` | Tails an active server's GC log (or inspects a running `--pid`) live in the terminal. |
 | `report` | Outputs a non-interactive report in `text`, `markdown`, or `json`. |
+| `diff` | Compares before/after GC logs to measure latency and freeze improvements. |
 
 ## Example output
 
@@ -82,6 +83,12 @@ Pass paths explicitly or export a redacted Markdown report for Discord:
 tickdoctor report --gc-log ./logs/gc.log --server-log ./logs/latest.log --format markdown --redact
 ```
 
+Compare GC latency before and after tuning your JVM flags:
+
+```sh
+tickdoctor diff ./logs/gc-before.log ./logs/gc-after.log
+```
+
 ## Documentation
 
 - [Diagnostic Rules Reference](docs/rules.md) — Complete list of all built-in GC and flag rules with explanations and documentation links.
@@ -90,7 +97,7 @@ tickdoctor report --gc-log ./logs/gc.log --server-log ./logs/latest.log --format
 
 ## Supported targets
 
-- **Java 9–26+ (`-Xlog:gc*`):** G1GC, Generational ZGC, Parallel
+- **Java 9–26+ (`-Xlog:gc*`):** G1GC, Generational ZGC, Shenandoah, Parallel
 - **Java 8 (`-XX:+PrintGCDetails`):** Parallel GC, G1GC, CMS
 - **Server logs:** Vanilla, Paper, Purpur, Spigot, Folia, Fabric, Forge
 

@@ -96,6 +96,50 @@ These rules trigger when concrete evidence of a performance degradation pattern 
 
 ---
 
+### `GC-006`: Frequent Metaspace Garbage Collections
+- **Severity:** `WARNING`
+- **Collector:** All
+- **Target Java:** All
+- **Condition:** Metadata GC Threshold pause count $\ge 2$.
+- **Why It Matters:** Repeated Metaspace collections indicate dynamic classloading or plugin reloads exhausting default Metaspace sizing, forcing Stop-The-World pauses.
+- **Recommended Action:** Set `-XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=512M`.
+- **Reference:** [Oracle JVM Memory Sizing](https://docs.oracle.com/en/java/javase/21/gctuning/considerations-initial-and-maximum-heap-sizes.html)
+
+---
+
+### `GC-007`: Suspected JVM Heap Memory Leak
+- **Severity:** `CRITICAL`
+- **Collector:** All
+- **Target Java:** All
+- **Condition:** Post-GC retained heap climbs steadily after warmup ($R^2 \ge 0.50$, positive regression slope, peak $> 75\%$ capacity).
+- **Why It Matters:** Steadily increasing live heap after collections means objects are leaking (often plugin caches, entity references, or chunk memory leaks) and will eventually trigger OutOfMemoryError crashes.
+- **Recommended Action:** Capture a heap dump (`-XX:+HeapDumpOnOutOfMemoryError`) and profile with `spark`.
+- **Reference:** [spark Memory Leak Guide](https://spark.lucko.me/docs/guides/Finding-memory-leaks)
+
+---
+
+### `GC-008`: Unusually High Object Allocation Rate
+- **Severity:** `WARNING`
+- **Collector:** All
+- **Target Java:** All
+- **Condition:** Average allocation rate $\ge 600\text{ MB/s}$.
+- **Why It Matters:** Excessive temporary allocations churn through Young Generation rapidly, increasing Young GC frequency and memory bandwidth pressure.
+- **Recommended Action:** Profile plugin/entity allocations with `spark` (`/spark heapsummary`).
+- **Reference:** [spark Command Usage](https://spark.lucko.me/docs/Command-Usage)
+
+---
+
+### `SHEN-001`: Shenandoah Degenerated GC Fallback Detected
+- **Severity:** `CRITICAL`
+- **Collector:** Shenandoah
+- **Target Java:** Java 17+
+- **Condition:** Degenerated GC fallback events $\ge 1$.
+- **Why It Matters:** Mutator threads exhausted free heap faster than concurrent Shenandoah cycles could reclaim memory, forcing a Stop-The-World fallback pause.
+- **Recommended Action:** Increase `-Xmx` or add `-XX:ConcGCThreads`.
+- **Reference:** [OpenJDK Shenandoah GC](https://wiki.openjdk.org/display/shenandoah/Main)
+
+---
+
 ## 2. Zero-Log Lint Rules (Static Flag Audit)
 
 These rules run via `tickdoctor lint` to audit startup scripts (`start.sh`, `start.bat`, `user_jvm_args.txt`) without requiring any log files.
