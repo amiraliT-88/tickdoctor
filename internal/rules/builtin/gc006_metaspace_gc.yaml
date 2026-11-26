@@ -1,0 +1,9 @@
+id: GC-006
+title: Frequent Metaspace Garbage Collections
+severity: WARNING
+collector: All
+condition_type: metaspace_gc_count
+threshold: 2
+recommendation: set -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=512M
+explanation: Repeated Metadata GC Threshold collections indicate dynamic class loading or plugin reloads exhausting default Metaspace sizing, causing unnecessary Stop-The-World pauses.
+doc_url: https://docs.oracle.com/en/java/javase/21/gctuning/considerations-initial-and-maximum-heap-sizes.html

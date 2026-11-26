@@ -1,0 +1,9 @@
+id: GC-008
+title: Unusually High Object Allocation Rate
+severity: WARNING
+collector: All
+condition_type: high_alloc_rate
+threshold: 600
+recommendation: profile plugin/entity allocations with spark (/spark heapsummary)
+explanation: The server is allocating temporary objects at an excessive rate per second, forcing frequent Young GC cycles and saturating memory bandwidth.
+doc_url: https://spark.lucko.me/docs/Command-Usage

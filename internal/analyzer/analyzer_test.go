@@ -67,3 +67,60 @@ func TestAllocationRate(t *testing.T) {
 		t.Errorf("expected ~0.25%% GC overhead, got %.4f", m.GCOverheadPct)
 	}
 }
+
+func TestDetectMemoryLeakOLS(t *testing.T) {
+	mb := int64(1024 * 1024)
+	capBytes := 4096 * mb
+
+	var leakEvents []*model.GCEvent
+	for i := 0; i < 20; i++ {
+		after := int64(1000+i*120) * mb
+		leakEvents = append(leakEvents, &model.GCEvent{
+			ID:         uint64(i + 1),
+			Type:       model.GCTypeYoung,
+			Duration:   15 * time.Millisecond,
+			HeapBefore: after + 400*mb,
+			HeapAfter:  after,
+			HeapTotal:  capBytes,
+		})
+	}
+
+	mLeak := Analyze(leakEvents, 0)
+	if !mLeak.SuspectedLeak {
+		t.Fatalf("expected SuspectedLeak=true for monotonic heap growth, got false (slope=%.2f)", mLeak.PostGCHeapSlopeMB)
+	}
+	if mLeak.PostGCHeapSlopeMB < 100 {
+		t.Errorf("expected slope ~120 MB/GC, got %.2f", mLeak.PostGCHeapSlopeMB)
+	}
+
+	// Warmup ramp in first 20% followed by stable plateau must not trigger false positive.
+	var stableEvents []*model.GCEvent
+	for i := 0; i < 20; i++ {
+		after := 2000 * mb
+		if i < 4 {
+			after = int64(600+i*350) * mb
+		}
+		stableEvents = append(stableEvents, &model.GCEvent{
+			ID:         uint64(i + 1),
+			Type:       model.GCTypeYoung,
+			Duration:   10 * time.Millisecond,
+			HeapBefore: after + 400*mb,
+			HeapAfter:  after,
+			HeapTotal:  capBytes,
+		})
+	}
+	mStable := Analyze(stableEvents, 0)
+	if mStable.SuspectedLeak {
+		t.Errorf("expected no leak for warmup-then-stable plateau, got SuspectedLeak=true (slope=%.2f)", mStable.PostGCHeapSlopeMB)
+	}
+}
+
+func TestShenandoahDegeneratedCount(t *testing.T) {
+	events := []*model.GCEvent{
+		{ID: 1, Type: model.GCTypeFull, Reason: "Degenerated GC (Mark)", Duration: 300 * time.Millisecond},
+	}
+	m := Analyze(events, 0)
+	if m.ShenandoahDegenerated != 1 {
+		t.Errorf("expected ShenandoahDegenerated=1, got %d", m.ShenandoahDegenerated)
+	}
+}

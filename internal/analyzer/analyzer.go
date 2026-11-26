@@ -28,16 +28,18 @@ type Metrics struct {
 	MixedCount int
 	FullCount  int
 
-	HumongousCount      int
-	EvacuationFailures  int
-	ExplicitGCCount     int
-	MetaspaceGCCount    int
-	CMSFailures         int
-	ZGCAllocationStalls int
+	HumongousCount        int
+	EvacuationFailures    int
+	ExplicitGCCount       int
+	MetaspaceGCCount      int
+	CMSFailures           int
+	ZGCAllocationStalls   int
+	ShenandoahDegenerated int
 
-	AvgAllocRateMBs float64
-	GCOverheadPct   float64
-	SuspectedLeak   bool
+	AvgAllocRateMBs   float64
+	GCOverheadPct     float64
+	PostGCHeapSlopeMB float64
+	SuspectedLeak     bool
 
 	MaxHeapBefore int64
 	MaxHeapAfter  int64
@@ -128,6 +130,9 @@ func Analyze(events []*model.GCEvent, totalUptime time.Duration) Metrics {
 		if strings.Contains(lowerReason, "allocation stall") {
 			m.ZGCAllocationStalls++
 		}
+		if strings.Contains(lowerReason, "degenerated") {
+			m.ShenandoahDegenerated++
+		}
 
 		if ev.HeapBefore > m.MaxHeapBefore {
 			m.MaxHeapBefore = ev.HeapBefore
@@ -155,13 +160,7 @@ func Analyze(events []*model.GCEvent, totalUptime time.Duration) Metrics {
 	m.PauseP95 = percentile(pauses, 0.95)
 	m.PauseP99 = percentile(pauses, 0.99)
 
-	if len(postGCHeaps) >= 10 {
-		firstHalfAvg := average(postGCHeaps[:len(postGCHeaps)/2])
-		secondHalfAvg := average(postGCHeaps[len(postGCHeaps)/2:])
-		if float64(secondHalfAvg) > float64(firstHalfAvg)*1.4 && float64(m.MaxHeapAfter) > float64(m.HeapCapacity)*0.85 {
-			m.SuspectedLeak = true
-		}
-	}
+	m.SuspectedLeak, m.PostGCHeapSlopeMB = detectMemoryLeak(postGCHeaps, m.HeapCapacity)
 
 	span := lastUptime - firstUptime
 	if span <= 0 && !firstTime.IsZero() && lastTime.After(firstTime) {
@@ -207,13 +206,54 @@ func percentile(sorted []time.Duration, p float64) time.Duration {
 	return sorted[lo] + time.Duration(frac*float64(sorted[hi]-sorted[lo]))
 }
 
-func average(vals []int64) int64 {
-	if len(vals) == 0 {
-		return 0
+func detectMemoryLeak(postGCHeaps []int64, heapCap int64) (bool, float64) {
+	if len(postGCHeaps) < 10 || heapCap <= 0 {
+		return false, 0
 	}
-	var sum int64
-	for _, v := range vals {
-		sum += v
+
+	start := len(postGCHeaps) / 5
+	window := postGCHeaps[start:]
+	n := len(window)
+	if n < 8 {
+		return false, 0
 	}
-	return sum / int64(len(vals))
+
+	const mb = 1024.0 * 1024.0
+	ys := make([]float64, n)
+	var sumY, maxAfter float64
+	for i, v := range window {
+		y := float64(v) / mb
+		ys[i] = y
+		sumY += y
+		if y > maxAfter {
+			maxAfter = y
+		}
+	}
+
+	meanX := float64(n-1) / 2.0
+	meanY := sumY / float64(n)
+	var ssXX, ssXY, ssYY float64
+	for i, y := range ys {
+		dx := float64(i) - meanX
+		dy := y - meanY
+		ssXX += dx * dx
+		ssXY += dx * dy
+		ssYY += dy * dy
+	}
+	if ssXX == 0 || ssYY == 0 {
+		return false, 0
+	}
+
+	slope := ssXY / ssXX
+	r2 := (ssXY * ssXY) / (ssXX * ssYY)
+	capMB := float64(heapCap) / mb
+	fittedGrowth := slope * float64(n-1)
+	fittedStart := meanY - slope*meanX
+	fittedEnd := fittedStart + fittedGrowth
+
+	if slope > 0 && r2 >= 0.50 && maxAfter > capMB*0.75 &&
+		(fittedGrowth >= capMB*0.25 || (fittedStart > 0 && fittedEnd > fittedStart*1.35)) {
+		return true, slope
+	}
+	return false, slope
 }

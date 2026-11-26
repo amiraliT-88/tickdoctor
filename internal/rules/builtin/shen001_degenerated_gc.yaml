@@ -1,0 +1,9 @@
+id: SHEN-001
+title: Shenandoah Degenerated GC Fallback Detected
+severity: CRITICAL
+collector: Shenandoah
+condition_type: shenandoah_degenerated
+threshold: 1
+recommendation: increase -Xmx or add -XX:ConcGCThreads
+explanation: Application threads ran out of free heap before concurrent Shenandoah collection finished, falling back to a Stop-The-World Degenerated GC pause that freezes server ticking.
+doc_url: https://wiki.openjdk.org/display/shenandoah/Main

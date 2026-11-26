@@ -1,0 +1,9 @@
+id: GC-007
+title: Suspected JVM Heap Memory Leak
+severity: CRITICAL
+collector: All
+condition_type: suspected_leak
+threshold: 1
+recommendation: capture a heap dump (-XX:+HeapDumpOnOutOfMemoryError) and profile with spark
+explanation: Post-GC retained heap is climbing steadily after warmup toward capacity, indicating objects that are never released (often caused by plugin caches, entity leaks, or chunk memory leaks).
+doc_url: https://spark.lucko.me/docs/guides/Finding-memory-leaks

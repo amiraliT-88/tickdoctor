@@ -59,6 +59,7 @@ func (e *Engine) Evaluate(m analyzer.Metrics, jvm model.JVMInfo) []Finding {
 
 		triggered := false
 		evidence := ""
+		recommendation := r.Recommendation
 
 		switch r.ConditionType {
 		case "explicit_gc_count":
@@ -75,6 +76,17 @@ func (e *Engine) Evaluate(m analyzer.Metrics, jvm model.JVMInfo) []Finding {
 			if float64(m.HumongousCount) >= r.Threshold {
 				triggered = true
 				evidence = fmt.Sprintf("%d humongous allocation region(s) detected", m.HumongousCount)
+				if jvm.RegionSize > 0 && jvm.RegionSize < 32*1024*1024 {
+					currentMB := jvm.RegionSize / (1024 * 1024)
+					targetMB := currentMB * 2
+					if targetMB < 8 {
+						targetMB = 8
+					}
+					if targetMB > 32 {
+						targetMB = 32
+					}
+					recommendation = fmt.Sprintf("set -XX:G1HeapRegionSize=%dM (current: %dM)", targetMB, currentMB)
+				}
 			}
 		case "heap_mismatch":
 			if jvm.HeapInitial > 0 && jvm.HeapMax > 0 && jvm.HeapInitial != jvm.HeapMax {
@@ -102,6 +114,32 @@ func (e *Engine) Evaluate(m analyzer.Metrics, jvm model.JVMInfo) []Finding {
 				triggered = true
 				evidence = fmt.Sprintf("%d ZGC allocation stall(s) detected (thread paused for memory reclamation)", m.ZGCAllocationStalls)
 			}
+		case "metaspace_gc_count":
+			if float64(m.MetaspaceGCCount) >= r.Threshold {
+				triggered = true
+				evidence = fmt.Sprintf("%d Metadata GC Threshold pause(s) triggered by classloading/Metaspace growth", m.MetaspaceGCCount)
+			}
+		case "suspected_leak":
+			if m.SuspectedLeak {
+				triggered = true
+				heapPct := 0.0
+				if m.HeapCapacity > 0 {
+					heapPct = float64(m.MaxHeapAfter) / float64(m.HeapCapacity) * 100.0
+				}
+				evidence = fmt.Sprintf("post-GC heap climbing at +%.1f MB/GC (peaked at %.1f%% of heap capacity)",
+					m.PostGCHeapSlopeMB, heapPct)
+			}
+		case "high_alloc_rate":
+			if m.AvgAllocRateMBs >= r.Threshold {
+				triggered = true
+				evidence = fmt.Sprintf("average allocation rate is %.1f MB/s (threshold: %.0f MB/s)",
+					m.AvgAllocRateMBs, r.Threshold)
+			}
+		case "shenandoah_degenerated":
+			if m.ShenandoahDegenerated >= int(r.Threshold) {
+				triggered = true
+				evidence = fmt.Sprintf("%d Shenandoah Degenerated GC pause(s) detected", m.ShenandoahDegenerated)
+			}
 		case "unsafe_memory":
 			if jvm.PhysicalMemory > 0 && jvm.HeapMax > 0 {
 				if jvm.HeapMax > jvm.PhysicalMemory {
@@ -120,7 +158,7 @@ func (e *Engine) Evaluate(m analyzer.Metrics, jvm model.JVMInfo) []Finding {
 			findings = append(findings, Finding{
 				Rule:           r,
 				Evidence:       evidence,
-				Recommendation: r.Recommendation,
+				Recommendation: recommendation,
 			})
 		}
 	}

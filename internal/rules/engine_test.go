@@ -134,3 +134,50 @@ func TestEngineDuplicateCollectorAndHeadroom(t *testing.T) {
 func ptrBool(v bool) *bool {
 	return &v
 }
+
+func TestEngineNewDiagnosticRulesAndSmartRegion(t *testing.T) {
+	engine, err := NewEngine()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m := analyzer.Metrics{
+		HumongousCount:    30,
+		MetaspaceGCCount:  3,
+		SuspectedLeak:     true,
+		PostGCHeapSlopeMB: 42.5,
+		MaxHeapAfter:      3600 * 1024 * 1024,
+		HeapCapacity:      4096 * 1024 * 1024,
+		AvgAllocRateMBs:   750.0,
+	}
+	jvm := model.JVMInfo{
+		Collector:  model.CollectorG1,
+		RegionSize: 4 * 1024 * 1024,
+	}
+
+	findings := engine.Evaluate(m, jvm)
+	got := make(map[string]Finding)
+	for _, f := range findings {
+		got[f.Rule.ID] = f
+	}
+
+	for _, id := range []string{"GC-003", "GC-006", "GC-007", "GC-008"} {
+		if _, ok := got[id]; !ok {
+			t.Errorf("expected rule %s to trigger", id)
+		}
+	}
+	if rec := got["GC-003"].Recommendation; rec != "set -XX:G1HeapRegionSize=8M (current: 4M)" {
+		t.Errorf("unexpected smart G1HeapRegionSize recommendation: %q", rec)
+	}
+
+	shenFindings := engine.Evaluate(analyzer.Metrics{ShenandoahDegenerated: 2}, model.JVMInfo{Collector: model.CollectorShenandoah})
+	foundShen := false
+	for _, f := range shenFindings {
+		if f.Rule.ID == "SHEN-001" {
+			foundShen = true
+		}
+	}
+	if !foundShen {
+		t.Errorf("expected SHEN-001 finding for Shenandoah degenerated pauses")
+	}
+}
