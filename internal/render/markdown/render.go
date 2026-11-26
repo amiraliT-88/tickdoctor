@@ -59,6 +59,9 @@ func Render(w io.Writer, jvm model.JVMInfo, m analyzer.Metrics, findings []rules
 	if m.AvgAllocRateMBs > 0 {
 		fmt.Fprintf(w, "| Allocation Rate | `%.1f MB/s` |\n", m.AvgAllocRateMBs)
 	}
+	if m.GCOverheadPct > 0 {
+		fmt.Fprintf(w, "| GC Overhead / Throughput | `%.2f%%` / `%.2f%%` |\n", m.GCOverheadPct, 100.0-m.GCOverheadPct)
+	}
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "### Minecraft Tick Budget Impact (50ms)\n\n")

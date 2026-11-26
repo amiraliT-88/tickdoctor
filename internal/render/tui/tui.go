@@ -209,6 +209,10 @@ func (m Model) renderOverview() string {
 		formatDuration(m.metrics.PauseP95),
 		formatDuration(m.metrics.PauseP99),
 	)
+	if m.metrics.GCOverheadPct > 0 || m.metrics.AvgAllocRateMBs > 0 {
+		pauses += fmt.Sprintf("\nGC Overhead: %.2f%%  |  Throughput: %.2f%%  |  Alloc Rate: %.1f MB/s",
+			m.metrics.GCOverheadPct, 100.0-m.metrics.GCOverheadPct, m.metrics.AvgAllocRateMBs)
+	}
 	pauseBox := boxStyle.Render(titleStyle.Render("Stop-The-World Pause Metrics") + "\n\n" + pauses)
 
 	tickImpact := fmt.Sprintf(

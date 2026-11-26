@@ -62,4 +62,8 @@ func TestAllocationRate(t *testing.T) {
 	if m.AvgAllocRateMBs < 19.9 || m.AvgAllocRateMBs > 20.1 {
 		t.Errorf("expected ~20 MB/s allocation rate, got %.2f", m.AvgAllocRateMBs)
 	}
+	// PauseSum = 25ms over 10s = 0.25%
+	if m.GCOverheadPct < 0.24 || m.GCOverheadPct > 0.26 {
+		t.Errorf("expected ~0.25%% GC overhead, got %.4f", m.GCOverheadPct)
+	}
 }

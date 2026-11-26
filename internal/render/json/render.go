@@ -33,6 +33,7 @@ type MetricsReport struct {
 	From50To150ms   int     `json:"from_50_to_150ms"`
 	Above150ms      int     `json:"above_150ms"`
 	AvgAllocRateMBs float64 `json:"avg_alloc_rate_mbs,omitempty"`
+	GCOverheadPct   float64 `json:"gc_overhead_pct,omitempty"`
 }
 
 type FindingReport struct {
@@ -90,6 +91,7 @@ func Render(w io.Writer, jvm model.JVMInfo, m analyzer.Metrics, findings []rules
 			From50To150ms:   m.From50To150,
 			Above150ms:      m.Above150ms,
 			AvgAllocRateMBs: m.AvgAllocRateMBs,
+			GCOverheadPct:   m.GCOverheadPct,
 		},
 		Findings: make([]FindingReport, 0, len(findings)),
 	}

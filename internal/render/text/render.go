@@ -38,7 +38,13 @@ func Render(w io.Writer, jvm model.JVMInfo, m analyzer.Metrics, findings []rules
 		formatDuration(m.PauseP50), formatDuration(m.PauseP90),
 		formatDuration(m.PauseP95), formatDuration(m.PauseP99))
 	if m.AvgAllocRateMBs > 0 {
-		fmt.Fprintf(w, "  alloc rate: %.1f MB/s\n", m.AvgAllocRateMBs)
+		fmt.Fprintf(w, "  alloc rate: %.1f MB/s", m.AvgAllocRateMBs)
+		if m.GCOverheadPct > 0 {
+			fmt.Fprintf(w, "  |  gc overhead: %.2f%% (throughput: %.2f%%)", m.GCOverheadPct, 100.0-m.GCOverheadPct)
+		}
+		fmt.Fprintln(w)
+	} else if m.GCOverheadPct > 0 {
+		fmt.Fprintf(w, "  gc overhead: %.2f%% (throughput: %.2f%%)\n", m.GCOverheadPct, 100.0-m.GCOverheadPct)
 	}
 	fmt.Fprintln(w)
 

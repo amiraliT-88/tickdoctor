@@ -36,6 +36,7 @@ type Metrics struct {
 	ZGCAllocationStalls int
 
 	AvgAllocRateMBs float64
+	GCOverheadPct   float64
 	SuspectedLeak   bool
 
 	MaxHeapBefore int64
@@ -169,8 +170,17 @@ func Analyze(events []*model.GCEvent, totalUptime time.Duration) Metrics {
 	if span <= 0 && totalUptime > 0 {
 		span = totalUptime
 	}
-	if span > 0 && allocBytes > 0 {
-		m.AvgAllocRateMBs = float64(allocBytes) / (1024.0 * 1024.0) / span.Seconds()
+	if span > 0 {
+		if allocBytes > 0 {
+			m.AvgAllocRateMBs = float64(allocBytes) / (1024.0 * 1024.0) / span.Seconds()
+		}
+		if m.PauseSum > 0 {
+			overhead := (float64(m.PauseSum) / float64(span)) * 100.0
+			if overhead > 100.0 {
+				overhead = 100.0
+			}
+			m.GCOverheadPct = overhead
+		}
 	}
 
 	return m
