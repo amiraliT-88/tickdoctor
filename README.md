@@ -22,7 +22,7 @@ TickDoctor compares timestamps between `gc.log` and `latest.log`. If GC pauses d
 
 ## Features
 
-- **Java 8 and Java 17+ support:** Handles both legacy Java 8 logs (`Parallel`, `G1`, `CMS`) and Java 17+ unified logging (`G1`, Generational `ZGC`).
+- **Java 8 and Java 9+ support:** Handles both legacy Java 8 logs (`Parallel`, `G1`, `CMS`) and modern unified logging (`-Xlog:gc*` across Java 9–26+, `G1`, Generational `ZGC`).
 - **Missing & broken flag detection:** Combines your `start.sh` / `start.bat` / `user_jvm_args.txt` with what's recorded in the GC log header to catch missing flags, outdated Java 8 flags left on Java 21, and unsafe heap sizes.
 - **Zero-log `lint` mode:** Checks startup scripts for deprecated flags, conflicting collectors, or dangerous `-Xmx` values in seconds without needing a GC log first.
 - **Lag correlation:** Lines up `Can't keep up!` and Spigot/Paper Watchdog entries in `latest.log` against GC stop-the-world pauses.
@@ -90,7 +90,7 @@ tickdoctor report --gc-log ./logs/gc.log --server-log ./logs/latest.log --format
 
 ## Supported targets
 
-- **Java 17, 21, 25 (`-Xlog:gc*`):** G1GC, Generational ZGC
+- **Java 9–26+ (`-Xlog:gc*`):** G1GC, Generational ZGC, Parallel
 - **Java 8 (`-XX:+PrintGCDetails`):** Parallel GC, G1GC, CMS
 - **Server logs:** Vanilla, Paper, Purpur, Spigot, Folia, Fabric, Forge
 
