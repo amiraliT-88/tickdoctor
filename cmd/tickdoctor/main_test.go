@@ -77,3 +77,20 @@ func TestSetupCmd(t *testing.T) {
 		t.Fatalf("setup --java 8 failed: %v", err)
 	}
 }
+
+func TestExtractXlogFile(t *testing.T) {
+	cases := []struct {
+		flag string
+		want string
+	}{
+		{"-Xlog:gc*:file=logs/gc.log:time,uptime", "logs/gc.log"},
+		{`-Xlog:gc*:file=C:\Users\asus\AppData\Local\Temp\gc.log:time,uptime`, `C:\Users\asus\AppData\Local\Temp\gc.log`},
+		{`-Xlog:gc*:file="C:\Program Files\mc\gc.log":time`, `C:\Program Files\mc\gc.log`},
+		{"-Xlog:gc*", ""},
+	}
+	for _, tc := range cases {
+		if got := extractXlogFile(tc.flag); got != tc.want {
+			t.Errorf("extractXlogFile(%q) = %q, want %q", tc.flag, got, tc.want)
+		}
+	}
+}

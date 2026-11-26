@@ -55,11 +55,8 @@ func newWatchCmd() *cobra.Command {
 					for _, flg := range parsed.AllFlags {
 						if strings.HasPrefix(flg, "-Xlog:gc") {
 							if gcLogPath == "" {
-								for _, part := range strings.Split(flg, ":") {
-									if strings.HasPrefix(part, "file=") {
-										gcLogPath = strings.TrimPrefix(part, "file=")
-										break
-									}
+								if p := extractXlogFile(flg); p != "" {
+									gcLogPath = p
 								}
 							}
 						} else if strings.HasPrefix(flg, "-Xloggc:") {
@@ -229,4 +226,32 @@ func formatWatchDuration(d time.Duration) string {
 		return fmt.Sprintf("%.2fms", float64(d.Microseconds())/1000.0)
 	}
 	return fmt.Sprintf("%.2fs", d.Seconds())
+}
+
+func extractXlogFile(flag string) string {
+	idx := strings.Index(flag, ":file=")
+	if idx == -1 {
+		return ""
+	}
+	rest := flag[idx+len(":file="):]
+	if rest == "" {
+		return ""
+	}
+	if rest[0] == '"' || rest[0] == '\'' {
+		q := rest[0]
+		if end := strings.IndexByte(rest[1:], q); end >= 0 {
+			return rest[1 : 1+end]
+		}
+		return rest[1:]
+	}
+	for i := 0; i < len(rest); i++ {
+		if rest[i] == ':' {
+			if i == 1 && ((rest[0] >= 'A' && rest[0] <= 'Z') || (rest[0] >= 'a' && rest[0] <= 'z')) &&
+				len(rest) > 2 && (rest[2] == '\\' || rest[2] == '/') {
+				continue
+			}
+			return rest[:i]
+		}
+	}
+	return rest
 }
