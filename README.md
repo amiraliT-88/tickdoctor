@@ -9,6 +9,8 @@ A local CLI and TUI tool for diagnosing JVM garbage collection pauses and lag sp
 
 Written in Go. It reads your `gc.log`, `latest.log`, and startup flags to answer whether server freezes are actually caused by GC, show the exact log evidence, and give you a flag diff to fix them.
 
+![TickDoctor Demo](assets/demo.gif)
+
 ## When this helps (and when it doesn't)
 
 Minecraft lag usually falls into two buckets:
