@@ -76,3 +76,27 @@ REM legacy comment -Xincgc
 		t.Errorf("expected exactly 3 active flags, got %v", parsed.AllFlags)
 	}
 }
+
+func TestParseQuotedTmuxAndBatchVars(t *testing.T) {
+	sh := `#!/bin/bash
+SESSION="lobby"
+tmux new-session -d -s "$SESSION" \
+"java -Xms2048M -Xmx2048M -XX:+UseG1GC -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -jar server.jar --nogui"
+`
+	parsedSh := ParseCommandLine(sh)
+	if parsedSh.HeapMax != 2048*1024*1024 || parsedSh.Collector != "G1" {
+		t.Errorf("failed to parse quoted tmux command: %+v", parsedSh)
+	}
+	if parsedSh.PreTouch == nil || !*parsedSh.PreTouch || parsedSh.DisableGC == nil || !*parsedSh.DisableGC {
+		t.Errorf("expected PreTouch and DisableGC true in quoted tmux command")
+	}
+
+	bat := `@echo off
+set /A memory=1024
+java -Xms%memory%M -Xmx%memory%M -XX:+UseG1GC -jar server.jar
+`
+	parsedBat := ParseCommandLine(bat)
+	if parsedBat.HeapMin != 1024*1024*1024 || parsedBat.HeapMax != 1024*1024*1024 {
+		t.Errorf("failed to expand batch %%memory%% var: min=%d max=%d", parsedBat.HeapMin, parsedBat.HeapMax)
+	}
+}

@@ -43,7 +43,8 @@ func ParseCommandLine(cmdLine string) *ParsedFlags {
 		RawCmd: cmdLine,
 	}
 
-	tokens := tokenize(cmdLine)
+	expanded := expandScriptVars(cmdLine)
+	tokens := flattenEmbeddedCommands(tokenize(expanded), 0)
 	res.RawTokens = tokens
 
 	for _, tok := range tokens {
@@ -220,4 +221,90 @@ func tokenize(line string) []string {
 	}
 
 	return tokens
+}
+
+var (
+	batchVarRegex = regexp.MustCompile(`%([A-Za-z_][A-Za-z0-9_]*)%`)
+	shellVarRegex = regexp.MustCompile(`\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?`)
+)
+
+func expandScriptVars(content string) string {
+	batchVars := make(map[string]string)
+	shellVars := make(map[string]string)
+
+	for _, rawLine := range strings.Split(content, "\n") {
+		line := strings.TrimSpace(rawLine)
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "::") {
+			continue
+		}
+
+		lower := strings.ToLower(line)
+		if strings.HasPrefix(lower, "rem ") || lower == "rem" {
+			continue
+		}
+
+		if strings.HasPrefix(lower, "set ") {
+			rest := strings.TrimSpace(line[4:])
+			if len(rest) >= 2 && (strings.EqualFold(rest[:2], "/a") || strings.EqualFold(rest[:2], "/p")) {
+				rest = strings.TrimSpace(rest[2:])
+			}
+			rest = strings.Trim(rest, `"`)
+			if eq := strings.IndexByte(rest, '='); eq > 0 {
+				k := strings.TrimSpace(rest[:eq])
+				v := strings.Trim(strings.TrimSpace(rest[eq+1:]), `"'`)
+				if k != "" {
+					batchVars[strings.ToLower(k)] = v
+				}
+			}
+			continue
+		}
+
+		if strings.HasPrefix(line, "export ") {
+			line = strings.TrimSpace(line[7:])
+		}
+		if eq := strings.IndexByte(line, '='); eq > 0 && !strings.ContainsAny(line[:eq], " \t-\"'") {
+			k := line[:eq]
+			v := strings.Trim(strings.TrimSpace(line[eq+1:]), `"'`)
+			shellVars[k] = v
+		}
+	}
+
+	if len(batchVars) > 0 {
+		content = batchVarRegex.ReplaceAllStringFunc(content, func(m string) string {
+			name := strings.ToLower(m[1 : len(m)-1])
+			if val, ok := batchVars[name]; ok {
+				return val
+			}
+			return m
+		})
+	}
+	if len(shellVars) > 0 {
+		content = shellVarRegex.ReplaceAllStringFunc(content, func(m string) string {
+			name := strings.TrimPrefix(m, "$")
+			name = strings.TrimPrefix(name, "{")
+			name = strings.TrimSuffix(name, "}")
+			if val, ok := shellVars[name]; ok {
+				return val
+			}
+			return m
+		})
+	}
+
+	return content
+}
+
+func flattenEmbeddedCommands(tokens []string, depth int) []string {
+	if depth >= 2 {
+		return tokens
+	}
+	out := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		if strings.ContainsAny(tok, " \t") && (strings.Contains(tok, " -X") || strings.HasPrefix(strings.TrimSpace(tok), "-X")) {
+			inner := tokenize(tok)
+			out = append(out, flattenEmbeddedCommands(inner, depth+1)...)
+			continue
+		}
+		out = append(out, tok)
+	}
+	return out
 }
