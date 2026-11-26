@@ -3,11 +3,12 @@ package model
 type Collector string
 
 const (
-	CollectorG1       Collector = "G1"
-	CollectorParallel Collector = "Parallel"
-	CollectorCMS      Collector = "CMS"
-	CollectorZGC      Collector = "ZGC"
-	CollectorUnknown  Collector = "Unknown"
+	CollectorG1         Collector = "G1"
+	CollectorParallel   Collector = "Parallel"
+	CollectorCMS        Collector = "CMS"
+	CollectorZGC        Collector = "ZGC"
+	CollectorShenandoah Collector = "Shenandoah"
+	CollectorUnknown    Collector = "Unknown"
 )
 
 type JVMInfo struct {

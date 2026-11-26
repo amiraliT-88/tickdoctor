@@ -147,3 +147,32 @@ func TestParseGenerationalZGC(t *testing.T) {
 		t.Errorf("expected ~60µs pause, got %v", events[0].Duration)
 	}
 }
+
+func TestParseShenandoah(t *testing.T) {
+	log := `
+[0.002s][info][gc] Using Shenandoah
+[2026-11-15T18:04:10.000+0300][10.000s][info][gc] GC(0) Pause Init Mark 0.120ms
+[2026-11-15T18:04:10.050+0300][10.050s][info][gc] GC(0) Pause Final Mark 0.240ms
+[2026-11-15T18:05:00.000+0300][60.000s][info][gc] GC(1) Pause Degenerated GC (Mark) 2048M->1024M(4096M) 412.500ms
+`
+	p := NewParser()
+	events, err := p.Parse(strings.NewReader(log))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.JVM.Collector != model.CollectorShenandoah {
+		t.Fatalf("expected CollectorShenandoah, got %v", p.JVM.Collector)
+	}
+	if len(events) != 2 {
+		t.Fatalf("expected 2 Shenandoah events, got %d", len(events))
+	}
+	if !strings.Contains(events[0].Reason, "Shenandoah Pause") {
+		t.Errorf("expected Shenandoah Pause reason, got %q", events[0].Reason)
+	}
+	if events[1].Type != model.GCTypeFull || !strings.Contains(events[1].Reason, "Degenerated") {
+		t.Errorf("expected degenerated pause mapped to Full GC, got type=%s reason=%q", events[1].Type, events[1].Reason)
+	}
+	if events[1].Duration != 412500*time.Microsecond {
+		t.Errorf("expected 412.5ms duration, got %v", events[1].Duration)
+	}
+}

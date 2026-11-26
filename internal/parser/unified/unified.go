@@ -114,6 +114,8 @@ func (p *Parser) ParseLine(line string) {
 				p.JVM.Collector = model.CollectorCMS
 			case "ZGC":
 				p.JVM.Collector = model.CollectorZGC
+			case "SHENANDOAH":
+				p.JVM.Collector = model.CollectorShenandoah
 			}
 		}
 	}
@@ -165,7 +167,11 @@ func (p *Parser) parseZGCPause(line string, m []string) {
 		ev.Type = model.GCTypeYoung
 	}
 	if ev.Reason == "" {
-		ev.Reason = "ZGC Pause (" + strings.TrimSpace(m[2]) + ")"
+		prefix := "ZGC Pause"
+		if p.JVM.Collector == model.CollectorShenandoah {
+			prefix = "Shenandoah Pause"
+		}
+		ev.Reason = prefix + " (" + strings.TrimSpace(m[2]) + ")"
 	}
 
 	durationStr := strings.ReplaceAll(m[3], ",", ".")
@@ -247,6 +253,14 @@ func (p *Parser) parsePauseSummary(line string, m []string) {
 	ev.ID = id
 	ev.Type = parseGCType(m[2])
 	ev.Reason = strings.TrimSpace(m[3])
+	if strings.EqualFold(m[2], "Degenerated") {
+		ev.Type = model.GCTypeFull
+		if ev.Reason == "" {
+			ev.Reason = "Degenerated GC"
+		} else {
+			ev.Reason = "Degenerated " + ev.Reason
+		}
+	}
 
 	ev.HeapBefore = parseBytes(m[4])
 	ev.HeapAfter = parseBytes(m[5])
